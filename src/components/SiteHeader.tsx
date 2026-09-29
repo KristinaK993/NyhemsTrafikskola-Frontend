@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import { BookingLink } from './BookingLink'
+import { useAuth } from '../auth/AuthContext'
 
 export function SiteHeader() {
   const { pathname } = useLocation()
@@ -8,6 +9,7 @@ export function SiteHeader() {
 }
 
 function SiteHeaderContent({ pathname }: { pathname: string }) {
+  const { user, signOut } = useAuth()
   const [openMenu, setOpenMenu] = useState<'education' | 'prices' | null>(null)
   const [openSubmenu, setOpenSubmenu] = useState<'car' | 'mc' | null>(null)
   const isHome = pathname === '/'
@@ -132,7 +134,12 @@ function SiteHeaderContent({ pathname }: { pathname: string }) {
         <Link onClick={closeMenus} to="/om-oss">Om oss</Link>
         <Link onClick={closeMenus} to="/kontakt">Kontakt</Link>
       </nav>
-      <BookingLink>Boka en körlektion</BookingLink>
+      {user ? (
+        <div className="header-account">
+          <Link to="/admin">Administration</Link>
+          <button type="button" onClick={() => void signOut().catch(() => {})}>Logga ut</button>
+        </div>
+      ) : <BookingLink>Boka en körlektion</BookingLink>}
     </header>
   )
 }

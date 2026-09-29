@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router'
+import { Navigate, Route, Routes } from 'react-router'
 import { MainLayout } from './layouts/MainLayout'
 import { Button } from './components/Button'
 import { AboutPage } from './pages/AboutPage'
@@ -16,6 +16,10 @@ import { McRisktvaanInquiryPage } from './pages/McRisktvaanInquiryPage'
 import { RiskettanBilPage, RiskettanMcPage } from './pages/RiskettanPage'
 import { RiskettanRegistrationPage } from './pages/RiskettanRegistrationPage'
 import { RisktvaanBilPage, RisktvaanMcPage } from './pages/RisktvaanPage'
+import { LoginPage, NoPermissionPage } from './pages/LoginPage'
+import { ProtectedRoute } from './auth/ProtectedRoute'
+import { useAuth } from './auth/AuthContext'
+import { AdminPage } from './pages/AdminPage'
 
 function NotFoundPage() {
   return (
@@ -30,6 +34,7 @@ function NotFoundPage() {
 }
 
 function App() {
+  const { user } = useAuth()
   return (
     <MainLayout>
       <Routes>
@@ -54,6 +59,12 @@ function App() {
         <Route path="/priser-och-korkortspaket" element={<PricesPackagesPage />} />
         <Route path="/om-oss" element={<AboutPage />} />
         <Route path="/kontakt" element={<ContactPage />} />
+        <Route path="/login" element={user ? <Navigate to="/admin" replace /> : <LoginPage />} />
+        <Route path="/logga-in" element={<Navigate to="/login" replace />} />
+        <Route path="/ingen-behorighet" element={<NoPermissionPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/admin" element={<AdminPage />} />
+        </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </MainLayout>

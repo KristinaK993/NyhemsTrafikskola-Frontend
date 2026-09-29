@@ -30,6 +30,9 @@ a { color: inherit; text-decoration: none; }
 .brand { display: inline-flex; align-items: center; }
 .brand img { display: block; width: 410px; max-width: 100%; height: auto; filter: drop-shadow(0 1px 3px rgb(0 0 0 / 48%)); }
 .main-nav { display: flex; align-items: center; gap: clamp(20px, 3vw, 42px); }
+.header-account { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+.header-account a, .header-account button { padding: 0; border: 0; background: transparent; color: var(--ink); font: 600 13px 'DM Sans', sans-serif; cursor: pointer; }
+.header-account a:hover, .header-account button:hover { color: var(--red); }
 .main-nav a, .site-footer nav a { color: #4b4b4b; font-size: 12px; transition: color .2s; }
 .main-nav > a, .nav-dropdown-trigger { color: var(--ink); font-size: 15px; font-weight: 700; }
 .site-header-home .main-nav > a, .site-header-home .nav-dropdown-trigger { color: rgb(255 255 255 / 98%); text-shadow: 0 1px 5px rgb(0 0 0 / 45%); }
@@ -207,6 +210,75 @@ a { color: inherit; text-decoration: none; }
 .riskettan-price { margin-top: 10px !important; color: var(--ink) !important; }
 .riskettan-registration-status { margin: 22px 0 0; padding: 14px 16px; background: #f6f6f4; color: #4b4b4b; font-size: 14px; line-height: 1.65; }
 
+.admin-page { width: min(var(--content-width), 100%); margin: 0 auto; padding: 58px var(--side-pad) 72px; }
+.admin-heading { position: relative; margin-bottom: 28px; padding-right: 190px; }
+.admin-heading h1 { margin: 0; font: 600 clamp(38px, 4.5vw, 58px)/1.08 'Manrope', sans-serif; letter-spacing: -.06em; }
+.admin-heading > p:not(.admin-eyebrow) { margin: 13px 0 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
+.admin-eyebrow { margin: 0 0 8px; color: var(--red); font-size: 10px; font-weight: 700; letter-spacing: .14em; }
+.admin-refresh { position: absolute; top: 24px; right: 0; min-height: 44px; padding: 0 16px; border: 1px solid #333; background: #fff; color: var(--ink); font: 600 13px 'DM Sans', sans-serif; cursor: pointer; }
+.admin-refresh:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+.admin-refresh:disabled { opacity: .6; cursor: wait; }
+.admin-contract-note, .admin-notice { margin: 0 0 20px; padding: 15px 17px; background: #f6f6f4; color: #4b4b4b; font-size: 13px; line-height: 1.7; }
+.admin-notice { background: #fff0f0; color: #8c1820; }
+.admin-course-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.admin-session-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+.admin-session-tabs button { min-height: 40px; padding: 0 16px; border: 1px solid #d8d6d1; background: #fff; color: var(--ink); font: 600 13px 'DM Sans', sans-serif; cursor: pointer; }
+.admin-session-tabs button[aria-pressed="true"] { border-color: #333; background: #333; color: #fff; }
+.admin-course { min-width: 0; padding: clamp(19px, 2.5vw, 30px); border: 1px solid #e8e7e4; background: #fff; }
+.admin-course-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 19px; border-bottom: 1px solid #e8e7e4; }
+.admin-course-heading h2, .admin-limits h2 { margin: 0; font: 600 25px/1.2 'Manrope', sans-serif; letter-spacing: -.04em; }
+.admin-count { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.admin-state { margin: 20px 0 0; color: var(--muted); font-size: 14px; }
+.admin-error { margin-top: 18px; padding: 14px; background: #fff0f0; color: #8c1820; font-size: 13px; line-height: 1.6; }
+.admin-error p { margin: 0; }
+.admin-error button { margin-top: 9px; padding: 0; border: 0; background: transparent; color: inherit; font: 700 13px 'DM Sans', sans-serif; text-decoration: underline; cursor: pointer; }
+.admin-session-list { margin: 0; padding: 0; list-style: none; }
+.admin-session { padding: 18px 0; border-bottom: 1px solid #eeedeb; }
+.admin-session:last-child { padding-bottom: 0; border-bottom: 0; }
+.admin-session-main { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.admin-session h3 { margin: 0; font: 600 15px 'Manrope', sans-serif; }
+.admin-session-main p { margin: 0; color: #4b4b4b; font-size: 12px; text-align: right; }
+.admin-status { display: inline-block; margin-top: 11px; padding: 4px 8px; background: #edf7ef; color: #225b30; font-size: 11px; font-weight: 600; }
+.admin-places { margin: 10px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; }
+.admin-places span { color: var(--muted); font-size: 11px; font-weight: 400; }
+.admin-limits { margin-top: 20px; padding: clamp(19px, 2.5vw, 30px); background: #f6f6f4; }
+.admin-limits h2 { font-size: 20px; }
+.admin-limits p { max-width: 1000px; margin: 12px 0 0; color: #4b4b4b; font-size: 13px; line-height: 1.75; }
+.admin-global-error { margin-bottom: 18px; }
+.admin-action-button, .admin-session-actions button, .admin-form-actions button { min-height: 38px; padding: 0 12px; border: 1px solid #333; background: #fff; color: var(--ink); font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
+.admin-action-button { margin-top: 17px; }
+.admin-action-button:disabled, .admin-session-actions button:disabled, .admin-form-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.admin-session-times { margin: 8px 0 0; color: #4b4b4b; font-size: 12px; }
+.admin-status-unpublished { background: #fff4df; color: #78500a; }
+.admin-session-actions, .admin-form-actions { margin-top: 13px; display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-session-actions .admin-delete { border-color: #a91d27; color: #a91d27; }
+.admin-inline-form, .admin-dialog { margin-top: 16px; padding: 17px; border: 1px solid #e8e7e4; background: #f9f9f7; }
+.admin-inline-form h4, .admin-dialog h2 { margin: 0 0 14px; font: 600 18px 'Manrope', sans-serif; }
+.admin-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.admin-form-grid .request-field:last-child { grid-column: 1 / -1; }
+.admin-form-actions button:first-child { background: var(--ink); color: #fff; }
+.admin-dialog-backdrop { position: fixed; z-index: 20; inset: 0; padding: 20px; display: grid; place-items: center; background: rgb(0 0 0 / 45%); }
+.admin-dialog { width: min(620px, 100%); margin: 0; padding: clamp(20px, 4vw, 32px); background: #fff; box-shadow: 0 15px 50px rgb(0 0 0 / 20%); }
+.admin-dialog .admin-form-grid { margin-top: 18px; }
+.admin-status-cancelled { display: inline-block; background: #fff0f0; color: #8c1820; }
+.admin-participants-dialog { width: min(820px, 100%); max-height: min(88vh, 900px); overflow-y: auto; }
+.admin-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.admin-dialog-heading button { min-height: 36px; padding: 0 12px; border: 1px solid #777; background: #fff; cursor: pointer; }
+.admin-booking-summary { margin: 17px 0; padding: 15px; display: flex; flex-wrap: wrap; gap: 24px; background: #f6f6f4; color: #4b4b4b; font-size: 13px; }
+.admin-booking-summary strong { color: var(--ink); font-size: 18px; }
+.admin-booking-status-counts { margin: -7px 0 17px; color: #4b4b4b; font-size: 12px; line-height: 1.7; }
+.admin-contact-warning { margin: 14px 0; padding: 13px 15px; background: #fff4df; color: #78500a; font-size: 13px; line-height: 1.6; }
+.admin-cancel-session { min-height: 40px; margin-bottom: 15px; padding: 0 13px; border: 1px solid #a91d27; background: #fff; color: #a91d27; font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
+.admin-cancel-session:disabled { opacity: .55; cursor: wait; }
+.admin-booking-list { margin: 0; padding: 0; list-style: none; }
+.admin-booking-list li { padding: 15px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-top: 1px solid #e8e7e4; }
+.admin-booking-list h3 { margin: 0 0 6px; font: 600 15px 'Manrope', sans-serif; }
+.admin-booking-list p { margin: 4px 0; color: #4b4b4b; font-size: 12px; overflow-wrap: anywhere; }
+.admin-booking-status { display: flex; align-items: flex-end; flex-direction: column; gap: 10px; text-align: right; color: #4b4b4b; font-size: 12px; }
+.admin-booking-status button { min-height: 36px; padding: 0 11px; border: 1px solid #a91d27; background: #fff; color: #a91d27; font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
+.admin-booking-status button:disabled { opacity: .55; cursor: wait; }
+.admin-booking-cancelled { opacity: .72; }
+
 @media (max-width: 1100px) {
   .mc-package-grid.package-grid-three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .site-header { min-height: 0; padding-top: 14px; padding-bottom: 12px; flex-wrap: wrap; row-gap: 8px; }
@@ -225,11 +297,14 @@ a { color: inherit; text-decoration: none; }
   .price-content-section { padding-inline: var(--side-pad); }
   .contact-page { padding-block: 46px 56px; }
   .request-page { padding-block: 46px 56px; }
+  .admin-page { padding-block: 46px 56px; }
 }
 
 @media (max-width: 640px) {
   .site-header { min-height: 66px; padding: 0 19px; flex-wrap: nowrap; row-gap: 0; }
   .site-header { gap: 12px; }
+  .header-account { gap: 10px; }
+  .header-account a, .header-account button { font-size: 12px; }
   .brand img { width: 260px; }
   .main-nav { order: 3; flex-basis: 100%; flex-wrap: wrap; justify-content: space-between; gap: 10px 16px; padding-top: 4px; }
   .nav-dropdown { position: relative; }
@@ -297,6 +372,17 @@ a { color: inherit; text-decoration: none; }
   .information-page-copy > p, .contact-page-intro > p { font-size: 13px; }
   .contact-page { padding: 36px 19px 44px; }
   .request-page { padding: 36px 19px 44px; }
+  .admin-page { padding: 36px 19px 44px; }
+  .admin-heading { padding-right: 0; }
+  .admin-refresh { position: static; margin-top: 16px; }
+  .admin-course-grid { grid-template-columns: 1fr; gap: 12px; }
+  .admin-course-heading h2 { font-size: 22px; }
+  .admin-session-main { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .admin-session-main p { text-align: left; }
+  .admin-form-grid { grid-template-columns: 1fr; }
+  .admin-form-grid .request-field:last-child { grid-column: auto; }
+  .admin-booking-list li { flex-direction: column; }
+  .admin-booking-status { align-items: flex-start; text-align: left; }
   .request-page-heading { margin-bottom: 21px; }
   .request-page-heading h1 { font-size: 38px; }
   .request-page-heading p { margin-top: 12px; font-size: 13px; }

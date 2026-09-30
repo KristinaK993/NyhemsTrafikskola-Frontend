@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ApiRequestError, BookingApiUnavailableError, isApiConfigured } from '../api/client'
 import {
+  bookAdminStudent,
   createAdminCourseSession,
   cancelAdminBooking,
   cancelAdminCourseSession,
@@ -14,15 +15,18 @@ import {
   type AdminCourse,
   type AdminCourseSessionDetails,
   type AdminCourseSession,
+  type ManualBookingInput,
 } from '../api/adminCourseSessionsApi'
 
 type Course = 'car' | 'mc'
 type SessionTab = 'upcoming' | 'past' | 'cancelled' | 'archived'
 type SessionForm = { startTime: string; endTime: string; capacity: string }
+type ManualStudentForm = ManualBookingInput
 const courseNames: Record<Course, string> = { car: 'Riskettan Bil', mc: 'Riskettan MC' }
 const dateFormatter = new Intl.DateTimeFormat('sv-SE', { dateStyle: 'long' })
 const timeFormatter = new Intl.DateTimeFormat('sv-SE', { hour: '2-digit', minute: '2-digit' })
 const emptyForm: SessionForm = { startTime: '', endTime: '', capacity: '16' }
+const emptyManualStudent: ManualStudentForm = { firstName: '', lastName: '', phone: '', email: '' }
 
 function toLocalInput(value: string) {
   const date = new Date(value)
@@ -40,6 +44,18 @@ function errorText(error: unknown) {
   if (error instanceof ApiRequestError && error.status === 403) return 'Ditt konto saknar behörighet att administrera kurstillfällen.'
   if (error instanceof ApiRequestError && error.status === 409 && /booking history/i.test(error.message)) {
     return 'Kurstillfället har bokningshistorik och kan därför inte tas bort. Bokningshistoriken har lämnats orörd.'
+  }
+  if (error instanceof ApiRequestError && error.status === 409) {
+    if (/full/i.test(error.message)) return 'Kurstillfället är fullt. Det finns inga lediga platser kvar.'
+    if (/already has an active booking/i.test(error.message)) return 'Eleven har redan en aktiv bokning på det här kurstillfället.'
+    if (/cancelled/i.test(error.message)) return 'Det inställda kurstillfället kan inte ta emot bokningar.'
+    if (/archived/i.test(error.message)) return 'Det arkiverade kurstillfället kan inte ta emot bokningar.'
+  }
+  if (error instanceof ApiRequestError && error.status === 400) {
+    if (/email/i.test(error.message)) return 'Ange en giltig e-postadress.'
+    if (/phone/i.test(error.message)) return 'Ange ett giltigt telefonnummer.'
+    if (/first name/i.test(error.message)) return 'Ange ett giltigt förnamn (högst 100 tecken).'
+    if (/last name/i.test(error.message)) return 'Ange ett giltigt efternamn (högst 100 tecken).'
   }
   return error instanceof Error ? error.message : 'Åtgärden kunde inte genomföras.'
 }
@@ -76,6 +92,10 @@ export function AdminPage() {
   const [sessionDetails, setSessionDetails] = useState<AdminCourseSessionDetails | null>(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [detailsError, setDetailsError] = useState<string | null>(null)
+  const [manualBookingOpen, setManualBookingOpen] = useState(false)
+  const [manualBookingForm, setManualBookingForm] = useState<ManualStudentForm>(emptyManualStudent)
+  const [manualBookingError, setManualBookingError] = useState<string | null>(null)
+  const [manualBookingSuccess, setManualBookingSuccess] = useState<string | null>(null)
 
   const loadSessions = useCallback(async (refresh = false) => {
     refresh ? setRefreshing(true) : setLoading(true)
@@ -107,6 +127,9 @@ export function AdminPage() {
     setDetailSessionId(sessionId)
     setSessionDetails(null)
     setDetailsError(null)
+    setManualBookingOpen(false)
+    setManualBookingError(null)
+    setManualBookingSuccess(null)
     setDetailsLoading(true)
     try { setSessionDetails(await getAdminCourseSessionDetails(sessionId)) }
     catch (requestError) { setDetailsError(errorText(requestError)) }
@@ -120,6 +143,31 @@ export function AdminPage() {
     try { setSessionDetails(await cancelAdminBooking(detailSessionId, bookingId)); await loadSessions(true) }
     catch (requestError) { setDetailsError(errorText(requestError)) }
     finally { setBusyId(null) }
+  }
+
+  async function submitManualBooking(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!detailSessionId) return
+    setManualBookingError(null)
+    setManualBookingSuccess(null)
+    setBusyId('manual-booking')
+    try {
+      const details = await bookAdminStudent(detailSessionId, {
+        firstName: manualBookingForm.firstName.trim(),
+        lastName: manualBookingForm.lastName.trim(),
+        phone: manualBookingForm.phone.trim(),
+        email: manualBookingForm.email.trim(),
+      })
+      setSessionDetails(details)
+      setManualBookingForm(emptyManualStudent)
+      setManualBookingOpen(false)
+      setManualBookingSuccess(`${manualBookingForm.firstName.trim()} ${manualBookingForm.lastName.trim()} har bokats in.`)
+      await loadSessions(true)
+    } catch (requestError) {
+      setManualBookingError(errorText(requestError))
+    } finally {
+      setBusyId(null)
+    }
   }
 
   async function cancelSession() {
@@ -232,7 +280,8 @@ export function AdminPage() {
             <p className="admin-session-times">Slutar {displayDateTime(session.endTime)}</p>
             <p className="admin-places">Fast kapacitet: {session.capacity} platser</p>
             {session.isCancelled && <span className="admin-status admin-status-cancelled">Inställt</span>}
-            <p className="admin-places">Bokningshistorik: {session.bookingHistoryCount}</p>
+            <p className="admin-places">Bokade elever: {session.activeBookingCount} av {session.capacity}</p>
+            <p className="admin-places">Lediga platser: {session.availableSeats}</p>
             <div className="admin-session-actions">{!session.isArchived && <><button type="button" disabled={Boolean(busyId) || session.isCancelled} onClick={() => startEdit(session)}>Ändra</button><button type="button" disabled={Boolean(busyId) || session.isCancelled} onClick={() => void togglePublished(session)}>{session.isCancelled ? 'Inställt' : session.isPublished ? 'Avpublicera' : 'Publicera'}</button>{session.bookingHistoryCount > 0 ? <button type="button" className="admin-delete" disabled={Boolean(busyId)} onClick={() => void archiveSession(session)}>Arkivera</button> : <button type="button" className="admin-delete" disabled={Boolean(busyId)} onClick={() => void removeSession(session)}>Ta bort</button>}</>}</div>
             <div className="admin-session-actions"><button type="button" disabled={Boolean(busyId)} onClick={() => void openDetails(session.id)}>Visa deltagare</button></div>
             {editing === session.id && <form className="admin-inline-form" onSubmit={(event) => void submitEdit(event, session.id)}><h4>Ändra kurstillfälle</h4><SessionFields form={editForm} onChange={setEditForm} /><div className="admin-form-actions"><button type="submit" disabled={busyId === session.id}>{busyId === session.id ? 'Sparar…' : 'Spara ändringar'}</button><button type="button" onClick={() => setEditing(null)}>Avbryt</button></div></form>}
@@ -245,11 +294,12 @@ export function AdminPage() {
       {detailsError && <p className="admin-error" role="alert">{detailsError}</p>}
       {sessionDetails && <>
         <div className="admin-booking-summary">
-          <span><strong>{sessionDetails.capacity}</strong> fast kapacitet</span>
-          <span><strong>{sessionDetails.activeBookingCount}</strong> aktiva bokningar</span>
+          <span><strong>{sessionDetails.capacity}</strong> max 16 platser</span>
+          <span><strong>{sessionDetails.activeBookingCount}</strong> bokade</span>
           <span><strong>{sessionDetails.availableSeats}</strong> lediga platser</span>
           <span><strong>{sessionDetails.bookings.length}</strong> bokningsposter i historiken</span>
         </div>
+        {manualBookingSuccess && <p className="admin-booking-success" role="status">{manualBookingSuccess}</p>}
         <p className="admin-booking-status-counts">
           Bekräftade: {sessionDetails.bookings.filter((booking) => booking.status === 'Confirmed').length}
           {' · '}Väntande: {sessionDetails.bookings.filter((booking) => booking.status === 'Pending' && booking.countsTowardCapacity).length}
@@ -258,6 +308,24 @@ export function AdminPage() {
         </p>
         {sessionDetails.isCancelled && <p className="admin-contact-warning" role="status">Kurstillfället är inställt. Personalen behöver kontakta berörda elever.</p>}
         {sessionDetails.isArchived && <p className="admin-contact-warning" role="status">Kurstillfället är arkiverat. Bokningshistorik och deltagaruppgifter är bevarade.</p>}
+        {!sessionDetails.isCancelled && !sessionDetails.isArchived && <>
+          <button type="button" className="admin-action-button" disabled={Boolean(busyId) || sessionDetails.availableSeats === 0} onClick={() => { setManualBookingError(null); setManualBookingSuccess(null); setManualBookingForm(emptyManualStudent); setManualBookingOpen(true) }}>Boka in elev</button>
+          {sessionDetails.availableSeats === 0 && <p className="admin-state">Kurstillfället är fullt. Maxkapaciteten är 16 deltagare.</p>}
+          {manualBookingError && <p className="admin-error" role="alert">{manualBookingError}</p>}
+          {manualBookingOpen && <form className="admin-inline-form admin-manual-booking-form" onSubmit={(event) => void submitManualBooking(event)}>
+            <h3>Boka in elev</h3>
+            <div className="admin-form-grid">
+              <label className="request-field"><span>Förnamn</span><input type="text" autoComplete="given-name" required maxLength={100} value={manualBookingForm.firstName} onChange={(event) => setManualBookingForm({ ...manualBookingForm, firstName: event.target.value })} /></label>
+              <label className="request-field"><span>Efternamn</span><input type="text" autoComplete="family-name" required maxLength={100} value={manualBookingForm.lastName} onChange={(event) => setManualBookingForm({ ...manualBookingForm, lastName: event.target.value })} /></label>
+              <label className="request-field"><span>Telefonnummer</span><input type="tel" autoComplete="tel" required maxLength={50} value={manualBookingForm.phone} onChange={(event) => setManualBookingForm({ ...manualBookingForm, phone: event.target.value })} /></label>
+              <label className="request-field"><span>E-postadress</span><input type="email" autoComplete="email" required maxLength={200} value={manualBookingForm.email} onChange={(event) => setManualBookingForm({ ...manualBookingForm, email: event.target.value })} /></label>
+            </div>
+            <div className="admin-form-actions">
+              <button type="submit" disabled={busyId === 'manual-booking' || sessionDetails.availableSeats === 0}>{busyId === 'manual-booking' ? 'Bokar…' : 'Boka in elev'}</button>
+              <button type="button" disabled={busyId === 'manual-booking'} onClick={() => { setManualBookingOpen(false); setManualBookingError(null) }}>Avbryt</button>
+            </div>
+          </form>}
+        </>}
         {!sessionDetails.isCancelled && !sessionDetails.isArchived && <button type="button" className="admin-cancel-session" disabled={Boolean(busyId)} onClick={() => void cancelSession()}>Ställ in hela kurstillfället</button>}
         {sessionDetails.bookings.length === 0 && <p className="admin-state">Inga bokningar för kurstillfället.</p>}
         {sessionDetails.bookings.length > 0 && <ul className="admin-booking-list">{sessionDetails.bookings.map((booking) => <li key={booking.id} className={booking.status === 'Cancelled' ? 'admin-booking-cancelled' : ''}>

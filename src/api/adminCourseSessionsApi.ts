@@ -9,6 +9,8 @@ export type AdminCourseSession = {
   isPublished: boolean
   isCancelled: boolean
   isArchived: boolean
+  activeBookingCount: number
+  availableSeats: number
   bookingHistoryCount: number
 }
 
@@ -34,6 +36,13 @@ export type AdminCourseSessionDetails = {
   bookings: AdminBooking[]
 }
 
+export type ManualBookingInput = {
+  firstName: string
+  lastName: string
+  phone: string
+  email: string
+}
+
 export type AdminCourse = {
   id: string
   type: 'RiskettanBil' | 'RiskettanMC'
@@ -56,6 +65,13 @@ export function getAdminCourseSessions(archived = false) {
 
 export function getAdminCourseSessionDetails(id: string) {
   return apiRequest<AdminCourseSessionDetails>(`/api/admin/course-sessions/${id}`)
+}
+
+export function bookAdminStudent(sessionId: string, student: ManualBookingInput) {
+  return apiRequest<AdminCourseSessionDetails>(`/api/admin/course-sessions/${sessionId}/bookings`, {
+    method: 'POST',
+    body: JSON.stringify(student),
+  })
 }
 
 export function cancelAdminBooking(sessionId: string, bookingId: string) {

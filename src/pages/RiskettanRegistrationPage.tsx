@@ -1,6 +1,6 @@
-import { RiskettanBookingForm } from '../components/RiskettanBookingForm'
-import { carRiskettanPrice } from '../data/prices'
+import { Navigate } from 'react-router'
 
+// Bookings are made from the student session list; this route only remains for existing links.
 export function RiskettanRegistrationPage() {
-  return <RiskettanBookingForm course="car" price={carRiskettanPrice} />
+  return <Navigate to="/riskettan-bil" replace />
 }

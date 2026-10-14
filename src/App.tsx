@@ -17,9 +17,11 @@ import { RiskettanBilPage, RiskettanMcPage } from './pages/RiskettanPage'
 import { RiskettanRegistrationPage } from './pages/RiskettanRegistrationPage'
 import { RisktvaanBilPage, RisktvaanMcPage } from './pages/RisktvaanPage'
 import { LoginPage, NoPermissionPage } from './pages/LoginPage'
+import { RegisterPage } from './pages/RegisterPage'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { useAuth } from './auth/AuthContext'
 import { AdminPage } from './pages/AdminPage'
+import { StudentPage } from './pages/StudentPage'
 
 function NotFoundPage() {
   return (
@@ -35,6 +37,10 @@ function NotFoundPage() {
 
 function App() {
   const { user } = useAuth()
+
+  const getRoleHomeRoute = (roles: string[] = []) =>
+    roles.some((role) => role.toLowerCase() === 'student') ? '/elev' : '/admin'
+
   return (
     <MainLayout>
       <Routes>
@@ -43,13 +49,15 @@ function App() {
         <Route path="/forfragan-testlektion" element={<TestLessonRequestPage />} />
         <Route path="/mc-korkort" element={<McKorkortPage />} />
         <Route path="/forfragan-mc-utbildning" element={<McTrainingInquiryPage />} />
-        <Route path="/bokning-riskettan-mc" element={<McRiskettanBookingPage />} />
         <Route path="/forfragan-risktvaan-mc" element={<McRisktvaanInquiryPage />} />
         <Route path="/bil-priser-och-paket" element={<BilPricesPage />} />
         <Route path="/mc-priser-och-paket" element={<McPricesPage />} />
         <Route path="/riskettan-bil" element={<RiskettanBilPage />} />
-        <Route path="/anmalan-riskettan-bil" element={<RiskettanRegistrationPage />} />
-        <Route path="/bokning-riskettan-bil" element={<RiskettanRegistrationPage />} />
+        <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+          <Route path="/bokning-riskettan-mc" element={<McRiskettanBookingPage />} />
+          <Route path="/anmalan-riskettan-bil" element={<RiskettanRegistrationPage />} />
+          <Route path="/bokning-riskettan-bil" element={<RiskettanRegistrationPage />} />
+        </Route>
         <Route path="/risktvaan-bil" element={<RisktvaanBilPage />} />
         <Route path="/riskettan-mc" element={<RiskettanMcPage />} />
         <Route path="/risktvaan-mc" element={<RisktvaanMcPage />} />
@@ -59,10 +67,15 @@ function App() {
         <Route path="/priser-och-korkortspaket" element={<PricesPackagesPage />} />
         <Route path="/om-oss" element={<AboutPage />} />
         <Route path="/kontakt" element={<ContactPage />} />
-        <Route path="/login" element={user ? <Navigate to="/admin" replace /> : <LoginPage />} />
+        <Route path="/login" element={user ? <Navigate to={getRoleHomeRoute(user.roles)} replace /> : <LoginPage />} />
+        <Route path="/register" element={user ? <Navigate to={getRoleHomeRoute(user.roles)} replace /> : <RegisterPage />} />
         <Route path="/logga-in" element={<Navigate to="/login" replace />} />
+        <Route path="/registrera" element={<Navigate to="/register" replace />} />
         <Route path="/ingen-behorighet" element={<NoPermissionPage />} />
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+          <Route path="/elev" element={<StudentPage />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['admin', 'instructor']} />}>
           <Route path="/admin" element={<AdminPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />

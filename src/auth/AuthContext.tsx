@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ApiRequestError, clearCsrfRequestToken, isApiConfigured } from '../api/client'
-import { getCurrentUser, login as apiLogin, logout as apiLogout, type AuthUser } from '../api/authApi'
+import { getCurrentUser, login as apiLogin, logout as apiLogout, register as apiRegister, type AuthUser, type RegisterPayload } from '../api/authApi'
 
 type AuthContextValue = {
   user: AuthUser | null
   loading: boolean
   error: string | null
   signIn: (email: string, password: string) => Promise<void>
+  signUp: (payload: RegisterPayload) => Promise<void>
   signOut: () => Promise<void>
   clearError: () => void
 }
@@ -50,6 +51,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const signUp = useCallback(async (payload: RegisterPayload) => {
+    setError(null)
+    try {
+      await apiRegister(payload)
+      setUser(await getCurrentUser())
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : 'Registreringen misslyckades. Försök igen.'
+      setError(message)
+      throw requestError
+    }
+  }, [])
+
   const signOut = useCallback(async () => {
     setError(null)
     try {
@@ -60,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ user, loading, error, signIn, signOut, clearError: () => setError(null) }), [user, loading, error, signIn, signOut])
+  const value = useMemo(() => ({ user, loading, error, signIn, signUp, signOut, clearError: () => setError(null) }), [user, loading, error, signIn, signUp, signOut])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

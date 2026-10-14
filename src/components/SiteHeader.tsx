@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { BookingLink } from './BookingLink'
 import { useAuth } from '../auth/AuthContext'
 
@@ -10,9 +10,12 @@ export function SiteHeader() {
 
 function SiteHeaderContent({ pathname }: { pathname: string }) {
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [openMenu, setOpenMenu] = useState<'education' | 'prices' | null>(null)
   const [openSubmenu, setOpenSubmenu] = useState<'car' | 'mc' | null>(null)
   const isHome = pathname === '/'
+  const isStudent = user?.roles.some((role) => role.toLowerCase() === 'student') ?? false
+  const isStaff = user?.roles.some((role) => role.toLowerCase() === 'admin' || role.toLowerCase() === 'instructor') ?? false
   const navigationRef = useRef<HTMLElement>(null)
   const educationButtonRef = useRef<HTMLButtonElement>(null)
   const pricesButtonRef = useRef<HTMLButtonElement>(null)
@@ -37,6 +40,11 @@ function SiteHeaderContent({ pathname }: { pathname: string }) {
       setOpenMenu(menu)
       setOpenSubmenu(null)
     }
+  }
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/', { replace: true })
   }
 
   useEffect(() => {
@@ -136,10 +144,16 @@ function SiteHeaderContent({ pathname }: { pathname: string }) {
       </nav>
       {user ? (
         <div className="header-account">
-          <Link to="/admin">Administration</Link>
-          <button type="button" onClick={() => void signOut().catch(() => {})}>Logga ut</button>
+          {isStudent ? <Link to="/elev">Elevportal</Link> : null}
+          {isStaff && !isStudent ? <Link to="/admin">Administration</Link> : null}
+          <button type="button" onClick={() => { void handleSignOut().catch(() => {}) }}>Logga ut</button>
         </div>
-      ) : <BookingLink>Boka en körlektion</BookingLink>}
+      ) : (
+        <div className="header-account">
+          <Link to="/login">Logga in</Link>
+          <BookingLink>Boka en körlektion</BookingLink>
+        </div>
+      )}
     </header>
   )
 }

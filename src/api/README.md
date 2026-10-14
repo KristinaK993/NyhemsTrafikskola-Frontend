@@ -8,4 +8,6 @@ Configure the API base URL with `VITE_DOTNET_API_BASE_URL` (for local developmen
 
 Authentication state is refreshed from `/api/auth/me` on app startup. Staff only routes require an `Admin` or `Instructor` role in that response. These client-side checks support navigation; the API remains responsible for authorization.
 
-Riskettan sessions and bookings use separate `car` and `mc` routes. The frontend only offers sessions returned by the API with available places. A booking is presented as confirmed only after the API returns a valid confirmation response.
+Riskettan sessions are read from `GET /api/course-sessions?courseType=RiskettanBil|RiskettanMC` (`courseSessionsApi.ts`). A signed-in student books with `POST /api/course-sessions/{id}/bookings` and the body `{ "termsAccepted": true }`; the API identifies the student from the authentication cookie, so no profile id or contact details are sent. A booking is presented as confirmed only after the API returns status `Confirmed`.
+
+`bookingApi.ts` and `types.ts` still describe the inquiry endpoints (`/api/requests/*`), which the backend does not implement yet.

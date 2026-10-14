@@ -1,13 +1,3 @@
-export type RiskettanCourse = 'car' | 'mc'
-
-export type PublishedRiskettanSession = {
-  id: string
-  course: RiskettanCourse
-  startsAt: string
-  label: string
-  availablePlaces: number
-}
-
 export type ContactDetails = {
   fullName: string
   phone: string
@@ -26,11 +16,6 @@ export type McTrainingInquiry = ContactDetails & {
   preferredTimes: string
 }
 
-export type RiskettanBooking = ContactDetails & {
-  course: RiskettanCourse
-  sessionId: string
-}
-
 export type McLicence = '' | 'A1' | 'A2' | 'A' | 'unsure'
 
 export type RisktvaanMcInquiry = ContactDetails & {
@@ -42,9 +27,4 @@ export type RisktvaanMcInquiry = ContactDetails & {
 export type RequestAcceptedResponse = {
   requestId: string
   status: 'received'
-}
-
-export type BookingResponse = {
-  bookingId: string
-  status: 'confirmed' | 'pending'
 }

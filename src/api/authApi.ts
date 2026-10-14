@@ -5,15 +5,32 @@ export type AuthUser = {
   email: string
   firstName: string
   lastName: string
+  phoneNumber: string
   roles: string[]
   studentProfileId: string | null
   instructorProfileId: string | null
+}
+
+export type RegisterPayload = {
+  firstName: string
+  lastName: string
+  phoneNumber: string
+  email: string
+  password: string
+  confirmPassword: string
 }
 
 export function login(email: string, password: string) {
   return apiRequest<{ message: string }>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+  })
+}
+
+export function register(payload: RegisterPayload) {
+  return apiRequest<{ message: string }>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   })
 }
 

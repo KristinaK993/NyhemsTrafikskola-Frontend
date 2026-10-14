@@ -1,5 +1,6 @@
+import { Link, useLocation, useNavigate } from 'react-router'
 import { useState, type FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { getCurrentUser } from '../api/authApi'
 import { Button } from '../components/Button'
 import { useAuth } from '../auth/AuthContext'
 
@@ -13,7 +14,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
-  const destination = (location.state as LoginLocationState | null)?.from?.pathname ?? '/admin'
+  const requestedPath = (location.state as LoginLocationState | null)?.from?.pathname
+  const destination = requestedPath ?? '/admin'
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -22,7 +24,11 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await signIn(email.trim(), password)
-      navigate(destination, { replace: true })
+      const currentUser = await getCurrentUser()
+      const isStudent = currentUser.roles.some((role) => role.toLowerCase() === 'student')
+      const studentRoute = requestedPath && !requestedPath.startsWith('/admin') ? requestedPath : '/elev'
+      const nextRoute = isStudent ? studentRoute : destination
+      navigate(nextRoute, { replace: true })
     } catch (requestError) {
       setLocalError(requestError instanceof Error ? requestError.message : 'Inloggningen misslyckades. Försök igen.')
     } finally {
@@ -34,7 +40,7 @@ export function LoginPage() {
     <section className="request-page">
       <div className="request-page-heading">
         <h1>Logga in</h1>
-        <p>Logga in med ditt konto för att fortsätta till administrationen.</p>
+        <p>Logga in med ditt konto för att fortsätta.</p>
       </div>
       <form className="test-lesson-form login-form" onSubmit={handleSubmit}>
         <div className="request-form-grid">
@@ -49,11 +55,14 @@ export function LoginPage() {
         </div>
         {localError && <p className="request-status request-status-error" role="alert">{localError}</p>}
         <Button className="request-submit" type="submit" disabled={submitting}>{submitting ? 'Loggar in…' : 'Logga in'}</Button>
+        <p style={{ marginTop: '1rem', textAlign: 'center' }}>
+          Har du inget konto? <Link to="/register">Skapa konto</Link>
+        </p>
       </form>
     </section>
   )
 }
 
 export function NoPermissionPage() {
-  return <section className="information-page information-page-text-only"><div className="information-page-copy"><h1>Ingen behörighet</h1><p>Ditt konto har inte behörighet att öppna administrationssidorna.</p><Button to="/">Till startsidan</Button></div></section>
+  return <section className="information-page information-page-text-only"><div className="information-page-copy"><h1>Ingen behörighet</h1><p>Ditt konto har inte behörighet att öppna den här sidan.</p><Button to="/">Till startsidan</Button></div></section>
 }

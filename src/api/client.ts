@@ -12,10 +12,13 @@ export class BookingApiUnavailableError extends Error {
 
 export class ApiRequestError extends Error {
   readonly status: number
+  // Set when the API reports which input field the error belongs to.
+  readonly field?: string
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, field?: string) {
     super(message)
     this.status = status
+    this.field = field
     this.name = 'ApiRequestError'
   }
 }
@@ -26,15 +29,18 @@ function isWriteMethod(method: string) {
   return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())
 }
 
-async function readErrorMessage(response: Response) {
+async function readError(response: Response): Promise<{ message: string; field?: string }> {
   try {
     const body: unknown = await response.json()
-    if (typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string') return body.message
-    if (typeof body === 'object' && body !== null && 'title' in body && typeof body.title === 'string') return body.title
+    if (typeof body === 'object' && body !== null) {
+      const field = 'field' in body && typeof body.field === 'string' ? body.field : undefined
+      if ('message' in body && typeof body.message === 'string') return { message: body.message, field }
+      if ('title' in body && typeof body.title === 'string') return { message: body.title, field }
+    }
   } catch {
     // Non-JSON error response.
   }
-  return `Begäran misslyckades (HTTP ${response.status}).`
+  return { message: `Begäran misslyckades (HTTP ${response.status}).` }
 }
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -54,7 +60,8 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   if (newCsrfToken) csrfRequestToken = newCsrfToken
 
   if (!response.ok) {
-    throw new ApiRequestError(await readErrorMessage(response), response.status)
+    const { message, field } = await readError(response)
+    throw new ApiRequestError(message, response.status, field)
   }
 
   if (response.status === 204) return undefined as T

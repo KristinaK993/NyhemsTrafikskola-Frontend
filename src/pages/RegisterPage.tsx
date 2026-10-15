@@ -2,41 +2,157 @@ import { Link, useNavigate } from 'react-router'
 import { useState, type FormEvent } from 'react'
 import { Button } from '../components/Button'
 import { useAuth } from '../auth/AuthContext'
+import { ApiRequestError } from '../api/client'
+
+type RegisterField = 'firstName' | 'lastName' | 'phoneNumber' | 'email' | 'password' | 'confirmPassword'
+type RegisterValues = Record<RegisterField, string>
+type RegisterErrors = Partial<Record<RegisterField, string>>
+
+const fieldOrder: RegisterField[] = ['firstName', 'lastName', 'phoneNumber', 'email', 'password', 'confirmPassword']
+const inputIds: Record<RegisterField, string> = {
+  firstName: 'register-first-name',
+  lastName: 'register-last-name',
+  phoneNumber: 'register-phone',
+  email: 'register-email',
+  password: 'register-password',
+  confirmPassword: 'register-confirm-password',
+}
+const emptyValues: RegisterValues = { firstName: '', lastName: '', phoneNumber: '', email: '', password: '', confirmPassword: '' }
+
+// Mirrors the backend rules so most mistakes are caught before submitting; the API still validates everything.
+const passwordRule = 'Minst 8 tecken med stor bokstav, liten bokstav och en siffra.'
+
+// Same rule as SwedishPhoneNumber in the backend: Swedish numbers, written with 0 or +46/0046, at most 10 digits nationally.
+function isValidSwedishPhoneNumber(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.length > 50) return false
+
+  const hasPlusPrefix = trimmed.startsWith('+')
+  const body = hasPlusPrefix ? trimmed.slice(1) : trimmed
+  if (!/^[0-9 ()-]+$/.test(body)) return false
+
+  const digits = body.replace(/\D/g, '')
+  let national = digits
+  if (hasPlusPrefix || digits.startsWith('0046')) {
+    const countryPrefix = hasPlusPrefix ? '46' : '0046'
+    if (!digits.startsWith(countryPrefix)) return false
+    let subscriber = digits.slice(countryPrefix.length)
+    if (subscriber.startsWith('0')) subscriber = subscriber.slice(1)
+    if (!subscriber) return false
+    national = `0${subscriber}`
+  }
+
+  return national.length >= 7 && national.length <= 10 && national[0] === '0' && national[1] !== '0'
+}
+
+function validateField(field: RegisterField, values: RegisterValues): string | undefined {
+  const value = values[field]
+  switch (field) {
+    case 'firstName':
+      if (!value.trim()) return 'Fyll i ditt förnamn.'
+      if (value.trim().length > 100) return 'Förnamnet får vara högst 100 tecken.'
+      return undefined
+    case 'lastName':
+      if (!value.trim()) return 'Fyll i ditt efternamn.'
+      if (value.trim().length > 100) return 'Efternamnet får vara högst 100 tecken.'
+      return undefined
+    case 'phoneNumber':
+      if (!value.trim()) return 'Fyll i ditt telefonnummer.'
+      if (!isValidSwedishPhoneNumber(value)) return 'Ange ett giltigt svenskt telefonnummer med högst 10 siffror, till exempel 070-123 45 67.'
+      return undefined
+    case 'email':
+      if (!value.trim()) return 'Fyll i din e-postadress.'
+      if (value.trim().length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return 'Ange en giltig e-postadress.'
+      return undefined
+    case 'password':
+      if (!value) return 'Fyll i ett lösenord.'
+      if (value.length < 8 || !/[A-ZÅÄÖ]/.test(value) || !/[a-zåäö]/.test(value) || !/\d/.test(value)) return `Lösenordet uppfyller inte kraven. ${passwordRule}`
+      return undefined
+    case 'confirmPassword':
+      if (!value) return 'Bekräfta ditt lösenord.'
+      if (value !== values.password) return 'Lösenorden matchar inte.'
+      return undefined
+  }
+}
+
+function isRegisterField(value: string | undefined): value is RegisterField {
+  return fieldOrder.includes(value as RegisterField)
+}
 
 export function RegisterPage() {
   const { signUp, clearError } = useAuth()
   const navigate = useNavigate()
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [values, setValues] = useState<RegisterValues>(emptyValues)
+  const [errors, setErrors] = useState<RegisterErrors>({})
   const [submitting, setSubmitting] = useState(false)
-  const [localError, setLocalError] = useState<string | null>(null)
+  const [generalError, setGeneralError] = useState<string | null>(null)
+
+  function focusField(field: RegisterField) {
+    document.getElementById(inputIds[field])?.focus()
+  }
+
+  function updateValue(field: RegisterField, value: string) {
+    setValues((current) => ({ ...current, [field]: value }))
+    // Clear the message as soon as the user starts correcting the field.
+    if (errors[field]) setErrors((current) => ({ ...current, [field]: undefined }))
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) return
     clearError()
-    setLocalError(null)
+    setGeneralError(null)
+
+    const nextErrors: RegisterErrors = {}
+    for (const field of fieldOrder) nextErrors[field] = validateField(field, values)
+    setErrors(nextErrors)
+
+    const firstInvalid = fieldOrder.find((field) => nextErrors[field])
+    if (firstInvalid) {
+      focusField(firstInvalid)
+      return
+    }
+
     setSubmitting(true)
 
     try {
       await signUp({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phoneNumber: phoneNumber.trim(),
-        email: email.trim(),
-        password,
-        confirmPassword,
+        firstName: values.firstName.trim(),
+        lastName: values.lastName.trim(),
+        phoneNumber: values.phoneNumber.trim(),
+        email: values.email.trim(),
+        password: values.password,
+        confirmPassword: values.confirmPassword,
       })
 
       navigate('/elev', { replace: true })
     } catch (requestError) {
-      setLocalError(requestError instanceof Error ? requestError.message : 'Registreringen misslyckades. Försök igen.')
+      if (requestError instanceof ApiRequestError && isRegisterField(requestError.field)) {
+        const field = requestError.field
+        setErrors({ [field]: requestError.message })
+        focusField(field)
+      } else {
+        setGeneralError(requestError instanceof Error ? requestError.message : 'Registreringen misslyckades. Försök igen.')
+      }
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function fieldProps(field: RegisterField) {
+    const errorId = `${inputIds[field]}-error`
+    const describedBy = [field === 'password' ? 'register-password-rule' : null, errors[field] ? errorId : null].filter(Boolean).join(' ')
+    return {
+      id: inputIds[field],
+      value: values[field],
+      onChange: (event: { target: { value: string } }) => updateValue(field, event.target.value),
+      'aria-invalid': Boolean(errors[field]),
+      'aria-describedby': describedBy || undefined,
+    }
+  }
+
+  function fieldError(field: RegisterField) {
+    return errors[field] ? <span className="request-field-error" id={`${inputIds[field]}-error`}>{errors[field]}</span> : null
   }
 
   return (
@@ -46,35 +162,42 @@ export function RegisterPage() {
         <p>Registrera dig som student och få tillgång till våra kurser och bokningar.</p>
       </div>
 
-      <form className="test-lesson-form login-form" onSubmit={handleSubmit}>
+      <form className="test-lesson-form login-form" onSubmit={handleSubmit} noValidate>
         <div className="request-form-grid">
           <div className="request-field">
-            <label htmlFor="register-first-name">Förnamn</label>
-            <input id="register-first-name" type="text" required value={firstName} onChange={(event) => setFirstName(event.target.value)} />
+            <label htmlFor={inputIds.firstName}>Förnamn</label>
+            <input type="text" autoComplete="given-name" required maxLength={100} {...fieldProps('firstName')} />
+            {fieldError('firstName')}
           </div>
           <div className="request-field">
-            <label htmlFor="register-last-name">Efternamn</label>
-            <input id="register-last-name" type="text" required value={lastName} onChange={(event) => setLastName(event.target.value)} />
+            <label htmlFor={inputIds.lastName}>Efternamn</label>
+            <input type="text" autoComplete="family-name" required maxLength={100} {...fieldProps('lastName')} />
+            {fieldError('lastName')}
           </div>
           <div className="request-field">
-            <label htmlFor="register-phone">Telefonnummer</label>
-            <input id="register-phone" type="tel" required value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} />
+            <label htmlFor={inputIds.phoneNumber}>Telefonnummer</label>
+            <input type="tel" autoComplete="tel" required maxLength={50} placeholder="070-123 45 67" {...fieldProps('phoneNumber')} />
+            {fieldError('phoneNumber')}
           </div>
           <div className="request-field">
-            <label htmlFor="register-email">E-postadress</label>
-            <input id="register-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <label htmlFor={inputIds.email}>E-postadress</label>
+            <input type="email" autoComplete="email" required maxLength={200} {...fieldProps('email')} />
+            {fieldError('email')}
           </div>
           <div className="request-field">
-            <label htmlFor="register-password">Lösenord</label>
-            <input id="register-password" type="password" autoComplete="new-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+            <label htmlFor={inputIds.password}>Lösenord</label>
+            <input type="password" autoComplete="new-password" required {...fieldProps('password')} />
+            <span id="register-password-rule" className="request-optional">{passwordRule}</span>
+            {fieldError('password')}
           </div>
           <div className="request-field">
-            <label htmlFor="register-confirm-password">Bekräfta lösenord</label>
-            <input id="register-confirm-password" type="password" autoComplete="new-password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+            <label htmlFor={inputIds.confirmPassword}>Bekräfta lösenord</label>
+            <input type="password" autoComplete="new-password" required {...fieldProps('confirmPassword')} />
+            {fieldError('confirmPassword')}
           </div>
         </div>
 
-        {localError && <p className="request-status request-status-error" role="alert">{localError}</p>}
+        {generalError && <p className="request-status request-status-error" role="alert">{generalError}</p>}
 
         <Button className="request-submit" type="submit" disabled={submitting}>
           {submitting ? 'Skapar konto…' : 'Registrera mig'}

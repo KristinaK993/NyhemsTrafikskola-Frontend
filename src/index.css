@@ -268,18 +268,20 @@ a { color: inherit; text-decoration: none; }
 .admin-booking-summary strong { color: var(--ink); font-size: 18px; }
 .admin-booking-success { margin: 0 0 14px; padding: 12px 14px; background: #edf6ee; color: #245b2d; font-size: 13px; }
 .admin-manual-booking-form h3 { margin: 0 0 12px; font: 600 16px 'Manrope', sans-serif; }
-.admin-booking-status-counts { margin: -7px 0 17px; color: #4b4b4b; font-size: 12px; line-height: 1.7; }
 .admin-contact-warning { margin: 14px 0; padding: 13px 15px; background: #fff4df; color: #78500a; font-size: 13px; line-height: 1.6; }
 .admin-cancel-session { min-height: 40px; margin-bottom: 15px; padding: 0 13px; border: 1px solid #a91d27; background: #fff; color: #a91d27; font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
 .admin-cancel-session:disabled { opacity: .55; cursor: wait; }
 .admin-booking-list { margin: 0; padding: 0; list-style: none; }
 .admin-booking-list li { padding: 15px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-top: 1px solid #e8e7e4; }
-.admin-booking-list h3 { margin: 0 0 6px; font: 600 15px 'Manrope', sans-serif; }
+.admin-booking-section { margin-top: 22px; }
+.admin-booking-section > h3 { margin: 0 0 8px; font: 700 16px 'Manrope', sans-serif; }
+.admin-booking-list h4 { margin: 0 0 6px; font: 600 15px 'Manrope', sans-serif; }
+.admin-booking-list-cancelled h4, .admin-booking-list-cancelled > li > div > p:not(.admin-late-cancellation) { color: #6b6b6b; }
 .admin-booking-list p { margin: 4px 0; color: #4b4b4b; font-size: 12px; overflow-wrap: anywhere; }
 .admin-booking-status { display: flex; align-items: flex-end; flex-direction: column; gap: 10px; text-align: right; color: #4b4b4b; font-size: 12px; }
 .admin-booking-status button { min-height: 36px; padding: 0 11px; border: 1px solid #a91d27; background: #fff; color: #a91d27; font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
 .admin-booking-status button:disabled { opacity: .55; cursor: wait; }
-.admin-booking-cancelled { opacity: .72; }
+.admin-late-cancellation { display: inline-block; margin-top: 6px; padding: 6px 9px; background: #fff4df; color: #78500a; font-size: 13px; line-height: 1.5; }
 
 @media (max-width: 1100px) {
   .mc-package-grid.package-grid-three { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -22,11 +22,15 @@ export function getPublicCourseSessions(courseType: 'RiskettanBil' | 'RiskettanM
   return apiRequest<PublicCourseSession[]>(`/api/course-sessions?courseType=${courseType}`)
 }
 
+// Version of the terms shown in RiskettanBookingForm. Must match BookingTerms.CurrentVersion in the backend;
+// change both together with the terms text, otherwise bookings are rejected as using outdated terms.
+export const BOOKING_TERMS_VERSION = '2026-10-14'
+
 // The student is identified by the signed-in account; only the session and the terms acceptance are sent.
 export async function bookCourseSession(courseSessionId: string) {
   const result = await apiRequest<StudentBookingResult>(`/api/course-sessions/${encodeURIComponent(courseSessionId)}/bookings`, {
     method: 'POST',
-    body: JSON.stringify({ termsAccepted: true }),
+    body: JSON.stringify({ termsAccepted: true, termsVersion: BOOKING_TERMS_VERSION }),
   })
 
   if (result?.status !== 'Confirmed' || typeof result.bookingId !== 'string') {

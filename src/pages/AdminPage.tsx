@@ -12,6 +12,7 @@ import {
   getAdminCourseSessions,
   setAdminCourseSessionPublished,
   updateAdminCourseSession,
+  type AdminBooking,
   type AdminCourse,
   type AdminCourseSessionDetails,
   type AdminCourseSession,
@@ -65,6 +66,38 @@ function displayDateTime(value: string) {
   return Number.isNaN(date.getTime()) ? 'Ogiltigt datum' : `${dateFormatter.format(date)}, ${timeFormatter.format(date)}`
 }
 
+// Bookings made before the audit fields existed have no history; that is stated rather than guessed.
+function bookingOriginText(booking: AdminBooking) {
+  if (booking.bookedOnline && booking.termsAcceptedAt) {
+    return `Bokad online av eleven ${displayDateTime(booking.termsAcceptedAt)} · villkor godkända (version ${booking.termsVersion ?? 'okänd'})`
+  }
+  if (booking.bookedByName) return `Bokad av personal: ${booking.bookedByName} ${displayDateTime(booking.createdAt)}`
+  return `Bokad ${displayDateTime(booking.createdAt)} · uppgift om vem som bokade saknas (bokad innan historik sparades)`
+}
+
+function participantName(booking: AdminBooking) {
+  return booking.firstName && booking.lastName ? `${booking.firstName} ${booking.lastName}` : booking.customerName
+}
+
+// Active bookings take a seat; everything else (cancelled or an expired reservation) belongs in the cancelled list.
+function splitParticipants(bookings: AdminBooking[]) {
+  const booked = bookings.filter((booking) => booking.countsTowardCapacity)
+  const cancelled = bookings
+    .filter((booking) => !booking.countsTowardCapacity)
+    .sort((a, b) => Date.parse(b.cancelledAt ?? b.createdAt) - Date.parse(a.cancelledAt ?? a.createdAt))
+  return { booked, cancelled }
+}
+
+function cancellationText(booking: AdminBooking) {
+  if (booking.status === 'Pending') return 'Reservationen löpte ut utan att bekräftas'
+  if (booking.status !== 'Cancelled') return null
+  const when = booking.cancelledAt ? ` ${displayDateTime(booking.cancelledAt)}` : ''
+  if (booking.cancellationReason === 'StudentOnline') return `Avbokad av eleven online${when}`
+  if (booking.cancellationReason === 'Staff') return `Avbokad av personal${booking.cancelledByName ? `: ${booking.cancelledByName}` : ''}${when}`
+  if (booking.cancellationReason === 'SessionCancelled') return `Kurstillfället ställdes in${booking.cancelledByName ? ` av ${booking.cancelledByName}` : ''}${when}`
+  return 'Avbokad · uppgift om vem som avbokade saknas (avbokad innan historik sparades)'
+}
+
 function SessionFields({ form, onChange }: { form: SessionForm; onChange: (form: SessionForm) => void }) {
   return <div className="admin-form-grid">
     <label className="request-field"><span>Starttid</span><input type="datetime-local" required value={form.startTime} onChange={(event) => onChange({ ...form, startTime: event.target.value })} /></label>
@@ -115,6 +148,10 @@ export function AdminPage() {
 
   useEffect(() => { void loadSessions() }, [loadSessions])
 
+  const { booked: bookedParticipants, cancelled: cancelledParticipants } = useMemo(
+    () => splitParticipants(sessionDetails?.bookings ?? []),
+    [sessionDetails],
+  )
   const sortedSessions = useMemo(() => [...sessions].sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime)), [sessions])
   const visibleSessions = useMemo(() => {
     if (activeTab === 'archived') return archivedSessions
@@ -294,18 +331,12 @@ export function AdminPage() {
       {detailsError && <p className="admin-error" role="alert">{detailsError}</p>}
       {sessionDetails && <>
         <div className="admin-booking-summary">
-          <span><strong>{sessionDetails.capacity}</strong> max 16 platser</span>
-          <span><strong>{sessionDetails.activeBookingCount}</strong> bokade</span>
-          <span><strong>{sessionDetails.availableSeats}</strong> lediga platser</span>
-          <span><strong>{sessionDetails.bookings.length}</strong> bokningsposter i historiken</span>
+          <span><strong>{sessionDetails.capacity}</strong> platser totalt</span>
+          <span><strong>{bookedParticipants.length}</strong> bokade</span>
+          <span><strong>{sessionDetails.availableSeats}</strong> lediga</span>
+          <span><strong>{cancelledParticipants.length}</strong> avbokade</span>
         </div>
         {manualBookingSuccess && <p className="admin-booking-success" role="status">{manualBookingSuccess}</p>}
-        <p className="admin-booking-status-counts">
-          Bekräftade: {sessionDetails.bookings.filter((booking) => booking.status === 'Confirmed').length}
-          {' · '}Väntande: {sessionDetails.bookings.filter((booking) => booking.status === 'Pending' && booking.countsTowardCapacity).length}
-          {' · '}Utgångna väntande: {sessionDetails.bookings.filter((booking) => booking.status === 'Pending' && !booking.countsTowardCapacity).length}
-          {' · '}Avbokade: {sessionDetails.bookings.filter((booking) => booking.status === 'Cancelled').length}
-        </p>
         {sessionDetails.isCancelled && <p className="admin-contact-warning" role="status">Kurstillfället är inställt. Personalen behöver kontakta berörda elever.</p>}
         {sessionDetails.isArchived && <p className="admin-contact-warning" role="status">Kurstillfället är arkiverat. Bokningshistorik och deltagaruppgifter är bevarade.</p>}
         {!sessionDetails.isCancelled && !sessionDetails.isArchived && <>
@@ -327,11 +358,19 @@ export function AdminPage() {
           </form>}
         </>}
         {!sessionDetails.isCancelled && !sessionDetails.isArchived && <button type="button" className="admin-cancel-session" disabled={Boolean(busyId)} onClick={() => void cancelSession()}>Ställ in hela kurstillfället</button>}
-        {sessionDetails.bookings.length === 0 && <p className="admin-state">Inga bokningar för kurstillfället.</p>}
-        {sessionDetails.bookings.length > 0 && <ul className="admin-booking-list">{sessionDetails.bookings.map((booking) => <li key={booking.id} className={booking.status === 'Cancelled' ? 'admin-booking-cancelled' : ''}>
-          <div><h3>{booking.firstName && booking.lastName ? `${booking.firstName} ${booking.lastName}` : booking.customerName}</h3><p>{booking.email}</p><p>{booking.phone}</p><p>Bokad {dateFormatter.format(new Date(booking.createdAt))}</p></div>
-          <div className="admin-booking-status"><span>{booking.status === 'Confirmed' ? 'Bekräftad' : booking.status === 'Cancelled' ? 'Avbokad' : booking.countsTowardCapacity ? 'Väntande' : 'Väntande · reservationen har löpt ut'}</span>{booking.status !== 'Cancelled' && !sessionDetails.isCancelled && !sessionDetails.isArchived && <button type="button" disabled={Boolean(busyId)} onClick={() => void cancelBooking(booking.id, booking.customerName)}>{busyId === booking.id ? 'Avbokar…' : 'Avboka elev'}</button>}</div>
-        </li>)}</ul>}
+        <section className="admin-booking-section" aria-labelledby="admin-booked-title">
+          <h3 id="admin-booked-title">Bokade elever ({bookedParticipants.length})</h3>
+          {bookedParticipants.length === 0 ? <p className="admin-state">Inga bokade elever.</p> : <ul className="admin-booking-list">{bookedParticipants.map((booking) => <li key={booking.id}>
+            <div><h4>{participantName(booking)}</h4><p>{booking.email}</p><p>{booking.phone}</p><p>{bookingOriginText(booking)}</p></div>
+            <div className="admin-booking-status">{!sessionDetails.isCancelled && !sessionDetails.isArchived && <button type="button" disabled={Boolean(busyId)} onClick={() => void cancelBooking(booking.id, booking.customerName)}>{busyId === booking.id ? 'Avbokar…' : 'Avboka elev'}</button>}</div>
+          </li>)}</ul>}
+        </section>
+        <section className="admin-booking-section" aria-labelledby="admin-cancelled-title">
+          <h3 id="admin-cancelled-title">Avbokade ({cancelledParticipants.length})</h3>
+          {cancelledParticipants.length === 0 ? <p className="admin-state">Inga avbokningar.</p> : <ul className="admin-booking-list admin-booking-list-cancelled">{cancelledParticipants.map((booking) => <li key={booking.id}>
+            <div><h4>{participantName(booking)}</h4><p>{booking.email}</p><p>{booking.phone}</p><p>{cancellationText(booking)}</p>{booking.isLateCancellation && <p className="admin-late-cancellation"><strong>Sen avbokning</strong> · mindre än 48 timmar före kursstart. 50 % av kurspriset kan debiteras.</p>}</div>
+          </li>)}</ul>}
+        </section>
       </>}
     </section></div>}
     {createCourse && <div className="admin-dialog-backdrop" role="presentation"><section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-create-title"><h2 id="admin-create-title">Skapa {courseNames[createCourse]}</h2><form onSubmit={(event) => void submitCreate(event)}><label className="request-field admin-course-select"><span>Kurs och CourseId</span><select required value={createCourseId} onChange={(event) => setCreateCourseId(event.target.value)}><option value="">Välj kurs</option>{courses.filter((record) => record.type === (createCourse === 'car' ? 'RiskettanBil' : 'RiskettanMC') && record.isActive).map((record) => <option key={record.id} value={record.id}>{record.title} · ID …{record.id.slice(-8)}</option>)}</select></label><SessionFields form={createForm} onChange={setCreateForm} /><div className="admin-form-actions"><button type="submit" disabled={busyId === 'create' || !createCourseId}>{busyId === 'create' ? 'Skapar…' : 'Skapa kurstillfälle'}</button><button type="button" onClick={() => setCreateCourse(null)}>Avbryt</button></div></form></section></div>}

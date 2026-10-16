@@ -81,6 +81,7 @@ export function RiskettanBookingForm({ session, onCancel, onBooked, onSessionUna
       )}
 
       <div style={{ marginTop: '1.5rem' }}>
+        {/* When this text changes, update BOOKING_TERMS_VERSION in courseSessionsApi.ts and BookingTerms in the backend. */}
         <h3>Boknings- och avbokningsvillkor</h3>
         <ul style={{ paddingLeft: '1.25rem', margin: '0.75rem 0 1rem' }}>
           <li>Kursen kostar {priceFormatter.format(session.price)} kr. Betalning ska ske före kursstart.</li>

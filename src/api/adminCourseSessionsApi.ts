@@ -24,6 +24,14 @@ export type AdminBooking = {
   createdAt: string
   status: 'Pending' | 'Confirmed' | 'Cancelled'
   countsTowardCapacity: boolean
+  bookedOnline: boolean
+  bookedByName: string | null
+  termsAcceptedAt: string | null
+  termsVersion: string | null
+  cancelledAt: string | null
+  cancellationReason: 'StudentOnline' | 'Staff' | 'SessionCancelled' | null
+  cancelledByName: string | null
+  isLateCancellation: boolean
 }
 
 export type AdminCourseSessionDetails = {
